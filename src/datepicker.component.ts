@@ -1,8 +1,9 @@
 import {
   animate, Component, ElementRef, EventEmitter, Input, keyframes, OnChanges,
-  OnInit, Output, Renderer, SimpleChange, state, style, transition, trigger
+  OnInit, Output, Renderer, SimpleChange, state, style, transition, trigger,
+  forwardRef
 } from '@angular/core';
-import { FormControl, Validators } from '@angular/forms';
+import { FormControl, Validators, ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
 
 import { Calendar } from './calendar';
 import * as moment from 'moment';
@@ -14,6 +15,8 @@ interface DateFormatFunction {
 interface ValidationResult {
   [key: string]: boolean;
 }
+
+
 
 @Component({
   selector: 'material-datepicker',
@@ -34,6 +37,13 @@ interface ValidationResult {
         ]))
       ])
     ])
+  ],
+  providers: [
+      {
+          provide: NG_VALUE_ACCESSOR,
+          useExisting: forwardRef(() => DatepickerComponent),
+          multi: true
+      }
   ],
   styles: [
     `.datepicker {
@@ -312,7 +322,8 @@ interface ValidationResult {
     </div>
     `
 })
-export class DatepickerComponent implements OnInit, OnChanges {
+export class DatepickerComponent implements OnInit, OnChanges, ControlValueAccessor {
+    onTouched: any;
   private readonly DEFAULT_FORMAT = 'YYYY-MM-DD';
 
   private dateVal: Date;
@@ -359,6 +370,9 @@ export class DatepickerComponent implements OnInit, OnChanges {
   clickListener: Function;
   // forms
   yearControl: FormControl;
+
+  //Function to be called on date selection
+  changeValue: any;
 
 
   constructor(private renderer: Renderer, private elementRef: ElementRef) {
@@ -600,6 +614,7 @@ export class DatepickerComponent implements OnInit, OnChanges {
       this.date = day;
       this.onSelect.emit(day);
       this.showCalendar = !this.showCalendar;
+      this.changeValue(day);
     }
   }
 
@@ -727,4 +742,29 @@ export class DatepickerComponent implements OnInit, OnChanges {
     }
     return { 'invalidYear': true };
   }
+
+  // -------------------------------------------------------------------------------- //
+  // --------------------------- Control Value Accessor ----------------------------- //
+  // -------------------------------------------------------------------------------- //
+  /**
+  * Set of functions to implement ControlValueAccessor interface, allowing this to be
+  * used with Angular/forms
+  */
+  writeValue(obj: any): void {
+    this.date = obj;
+    this.syncVisualsWithDate();
+  }
+
+  registerOnChange(fn: any): void {
+      this.changeValue = fn;
+  }
+
+  registerOnTouched(fn: any): void {
+      this.onTouched = fn;
+  }
+
+  setDisabledState(isDisabled: boolean): void {
+      this.disabled = isDisabled;
+  }
+
 }
